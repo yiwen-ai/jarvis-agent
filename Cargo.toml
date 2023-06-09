@@ -1,0 +1,65 @@
+[package]
+name = "jarvis-agent"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.64"
+description = ""
+publish = false
+repository = "https://github.com/yiwen-ai/jarvis-agent"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.71"
+axum = { version = "0.6", features = [
+  "headers",
+  "http1",
+  "http2",
+  "json",
+  "macros",
+  "matched-path",
+  "tokio",
+  "query",
+], default-features = true }
+bytes = "1.4.0"
+config = "0.13.3"
+futures-util = "0.3.28"
+hyper = "0.14.26"
+libflate = "1.4.0"
+log = "0.4.18"
+reqwest = { version = "0.11", features = [
+  "rustls-tls",
+  "rustls-tls-webpki-roots",
+  "json",
+  "gzip",
+  "trust-dns",
+], default-features = false }
+rustls-pemfile = "1.0.2"
+serde = "1.0.164"
+serde_json = "1.0.96"
+structured-logger = "1.0.0"
+tokio = { version = "1.28", features = [
+  "fs",
+  "io-util",
+  "io-std",
+  "macros",
+  "net",
+  "parking_lot",
+  "process",
+  "rt",
+  "rt-multi-thread",
+  "signal",
+  "sync",
+  "time",
+], default-features = true }
+tokio-rustls = "0.24.0"
+tower = "0.4.13"
+tower-http = { version = "0.4", features = [
+  "catch-panic",
+  "compression-gzip",
+  "compression-zstd",
+  "decompression-gzip",
+  "decompression-zstd",
+  "propagate-header",
+] }
+zstd = "0.12.3+zstd.1.5.2"
