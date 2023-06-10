@@ -16,4 +16,4 @@ fix:
 	@cargo clippy --fix --bin "jarvis-agent" --tests
 
 build:
-	@cargo build --target x86_64-unknown-linux-gnu --release
+	@DOCKER_BUILDKIT=1 docker build --output target .

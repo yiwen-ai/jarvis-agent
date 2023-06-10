@@ -1,5 +1,5 @@
 use axum::{
-    body::boxed,
+    body::{boxed, StreamBody},
     extract::{Extension, State},
     http::{self, Request, StatusCode},
     response::{IntoResponse, Response},
@@ -70,7 +70,10 @@ pub async fn handler(
     let mut rreq = rreq.unwrap();
     headers.remove(http::header::HOST);
     // headers.remove(http::header::ACCEPT_ENCODING);
+    headers.remove(http::header::FORWARDED);
+    headers.remove(http::header::HeaderName::from_static("x-forwarded-for"));
     headers.remove(http::header::HeaderName::from_static("x-forwarded-host"));
+    headers.remove(http::header::HeaderName::from_static("x-forwarded-proto"));
     if headers.contains_key(http::header::CONTENT_ENCODING) {
         if let Some(body) = rreq.body() {
             if let Some(body) = body.as_bytes() {
@@ -105,25 +108,25 @@ pub async fn handler(
     let rres = rres.unwrap();
     let status = rres.status();
     let version = rres.version();
-    let mut headers = rres.headers().clone();
+    let headers = rres.headers().to_owned();
+    ctx.set(
+        "res_content_encoding",
+        Value::from(extract_header(&headers, "content-encoding", || {
+            "".to_string()
+        })),
+    )
+    .await;
+    ctx.set(
+        "res_content_length",
+        Value::from(extract_header(&headers, "content-length", || {
+            "".to_string()
+        })),
+    )
+    .await;
 
-    let body = rres.bytes().await.unwrap();
-    let mut body: Vec<u8> = body.into();
-    ctx.set("res_body_size", Value::from(body.len())).await;
-    if !headers.contains_key(http::header::CONTENT_ENCODING) {
-        headers.remove(http::header::CONTENT_LENGTH);
-        headers.insert(http::header::CONTENT_ENCODING, enc.header_value());
-
-        body = enc.encode_all(&body).unwrap();
-        ctx.set("res_body_encoded_size", Value::from(body.len()))
-            .await;
-    }
-
-    let mut res = Response::builder()
-        .status(status)
-        .version(version)
-        .body(boxed(Body::from(body)))
-        .unwrap();
+    let mut res = Response::new(boxed(StreamBody::new(rres.bytes_stream())));
+    *res.status_mut() = status;
+    *res.version_mut() = version;
     *res.headers_mut() = headers;
 
     res

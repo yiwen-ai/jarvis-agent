@@ -71,8 +71,9 @@ async fn main() -> anyhow::Result<()> {
         .layer(CompressionLayer::new());
 
     let mut app = Router::new()
-        .route("/", routing::get(agent::handler))
-        .fallback(agent::handler)
+        .route("/", routing::any(agent::handler))
+        .route("/*any", routing::any(agent::handler))
+        // .fallback(agent::handler)
         .route_layer(mds)
         .with_state(client)
         .into_make_service_with_connect_info::<SocketAddr>();
