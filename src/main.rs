@@ -22,6 +22,10 @@ mod agent;
 mod conf;
 mod context;
 mod encoding;
+mod erring;
+
+const APP_NAME: &str = env!("CARGO_PKG_NAME");
+const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> anyhow::Result<()> {
@@ -78,7 +82,13 @@ async fn main() -> anyhow::Result<()> {
         .with_state(client)
         .into_make_service_with_connect_info::<SocketAddr>();
 
-    log::info!("Javis agent start {} at {}", cfg.env, &addr);
+    log::info!(
+        "{}@{} start {} at {}",
+        APP_NAME,
+        APP_VERSION,
+        cfg.env,
+        &addr
+    );
     loop {
         match poll_fn(|cx| Pin::new(&mut listener).poll_accept(cx)).await {
             None => {}

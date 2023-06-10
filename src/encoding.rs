@@ -1,7 +1,6 @@
-use axum::http::header::{HeaderMap, HeaderValue};
-use bytes::Buf;
+use axum::http::header;
 use libflate::gzip::{Decoder, Encoder};
-use std::{io, io::Read, io::Write, string::ToString};
+use std::{io, string::ToString};
 
 pub enum Encoding {
     Zstd,
@@ -27,14 +26,13 @@ impl Encoding {
         }
     }
 
-    pub fn from_header(hm: &HeaderMap) -> Self {
-        match hm.get("accept-encoding") {
-            None => Self::Identity,
+    pub fn from_header(hm: &header::HeaderMap) -> Self {
+        match hm.get(header::CONTENT_ENCODING) {
             Some(v) => match v.to_str() {
                 Ok(s) => {
-                    if s.contains("zstd") {
+                    if s.eq("zstd") {
                         Self::Zstd
-                    } else if s.contains("gzip") {
+                    } else if s.eq("gzip") {
                         Self::Gzip
                     } else {
                         Self::Identity
@@ -42,26 +40,42 @@ impl Encoding {
                 }
                 Err(_) => Self::Identity,
             },
+            None => match hm.get("accept-encoding") {
+                None => Self::Identity,
+                Some(v) => match v.to_str() {
+                    Ok(s) => {
+                        if s.contains("zstd") {
+                            Self::Zstd
+                        } else if s.contains("gzip") {
+                            Self::Gzip
+                        } else {
+                            Self::Identity
+                        }
+                    }
+                    Err(_) => Self::Identity,
+                },
+            },
         }
     }
 
-    pub fn header_value(&self) -> HeaderValue {
+    pub fn header_value(&self) -> header::HeaderValue {
         match self {
-            Self::Zstd => HeaderValue::from_static("zstd"),
-            Self::Gzip => HeaderValue::from_static("gzip"),
-            Self::Identity => HeaderValue::from_static("identity"),
+            Self::Zstd => header::HeaderValue::from_static("zstd"),
+            Self::Gzip => header::HeaderValue::from_static("gzip"),
+            Self::Identity => header::HeaderValue::from_static("identity"),
         }
     }
 
-    pub fn encode_all(&self, data: &[u8]) -> Result<Vec<u8>, io::Error> {
+    pub fn encode_all<R: io::Read>(&self, r: R) -> Result<Vec<u8>, io::Error> {
         match self {
             Self::Zstd => {
-                let buf = zstd::stream::encode_all(data.reader(), 9)?;
+                let buf = zstd::stream::encode_all(r, 9)?;
                 Ok(buf)
             }
             Self::Gzip => {
                 let mut encoder = Encoder::new(Vec::new())?;
-                encoder.write_all(data)?;
+                let mut r = r;
+                let _ = io::copy(&mut r, &mut encoder);
                 encoder.finish().into_result()
             }
             Self::Identity => Err(io::Error::new(
@@ -71,14 +85,15 @@ impl Encoding {
         }
     }
 
-    pub fn decode_all(&self, data: &[u8]) -> Result<Vec<u8>, io::Error> {
+    pub fn decode_all<R: io::Read>(&self, r: R) -> Result<Vec<u8>, io::Error> {
+        use io::Read;
         match self {
             Self::Zstd => {
-                let buf = zstd::stream::decode_all(data.reader())?;
+                let buf = zstd::stream::decode_all(r)?;
                 Ok(buf)
             }
             Self::Gzip => {
-                let mut decoder = Decoder::new(data)?;
+                let mut decoder = Decoder::new(r)?;
                 let mut buf = Vec::new();
                 decoder.read_to_end(&mut buf)?;
                 Ok(buf)
