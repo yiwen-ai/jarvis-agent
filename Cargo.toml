@@ -1,8 +1,8 @@
 [package]
 name = "jarvis-agent"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
-rust-version = "1.64"
+rust-version = "1.70"
 description = ""
 publish = false
 repository = "https://github.com/yiwen-ai/jarvis-agent"
@@ -63,7 +63,7 @@ tower-http = { version = "0.4.*", features = [
   "decompression-zstd",
   "propagate-header",
 ] }
-zstd = "0.12.3+zstd.1.5.2"
+zstd = "0.12.*"
 
 [profile.release]
 lto = true
