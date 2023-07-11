@@ -16,7 +16,10 @@ use tokio_rustls::{
     TlsAcceptor,
 };
 use tower::{MakeService, ServiceBuilder};
-use tower_http::{catch_panic::CatchPanicLayer, compression::CompressionLayer};
+use tower_http::{
+    catch_panic::CatchPanicLayer,
+    compression::{predicate::SizeAbove, CompressionLayer},
+};
 
 mod agent;
 mod conf;
@@ -70,14 +73,13 @@ async fn main() -> anyhow::Result<()> {
         .unwrap();
 
     let mds = ServiceBuilder::new()
-        .layer(middleware::from_fn(context::middleware))
         .layer(CatchPanicLayer::new())
-        .layer(CompressionLayer::new());
+        .layer(middleware::from_fn(context::middleware))
+        .layer(CompressionLayer::new().compress_when(SizeAbove::new(encoding::MIN_ENCODING_SIZE)));
 
     let mut app = Router::new()
         .route("/", routing::any(agent::handler))
         .route("/*any", routing::any(agent::handler))
-        // .fallback(agent::handler)
         .route_layer(mds)
         .with_state(client)
         .into_make_service_with_connect_info::<SocketAddr>();

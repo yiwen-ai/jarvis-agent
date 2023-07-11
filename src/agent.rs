@@ -39,7 +39,8 @@ where
     let url = reqwest::Url::parse(&format!("https://{}{}", host, path_query))
         .map_err(|e| HTTPError(400, e.to_string()))?;
 
-    let enc = encoding::Encoding::from_header(req.headers());
+    let enc =
+        encoding::Encoding::from_header_value(req.headers().get(http::header::CONTENT_ENCODING));
     ctx.set("encoding", Value::String(enc.to_string())).await;
 
     let method = req.method().clone();

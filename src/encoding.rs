@@ -2,6 +2,10 @@ use axum::http::header;
 use libflate::gzip::{Decoder, Encoder};
 use std::{io, string::ToString};
 
+// recommended minimum size for compression.
+pub const MIN_ENCODING_SIZE: u16 = 128;
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Encoding {
     Zstd,
     Gzip,
@@ -20,42 +24,20 @@ impl ToString for Encoding {
 
 impl Encoding {
     pub fn identity(&self) -> bool {
-        match self {
-            Self::Identity => true,
-            _ => false,
-        }
+        matches!(self, Self::Identity)
     }
 
-    pub fn from_header(hm: &header::HeaderMap) -> Self {
-        match hm.get(header::CONTENT_ENCODING) {
-            Some(v) => match v.to_str() {
-                Ok(s) => {
-                    if s.eq("zstd") {
-                        Self::Zstd
-                    } else if s.eq("gzip") {
-                        Self::Gzip
-                    } else {
-                        Self::Identity
-                    }
+    pub fn from_header_value(val: Option<&header::HeaderValue>) -> Self {
+        if let Some(val) = val {
+            if let Ok(val) = val.to_str() {
+                if val.contains("zstd") {
+                    return Self::Zstd;
+                } else if val.contains("gzip") {
+                    return Self::Gzip;
                 }
-                Err(_) => Self::Identity,
-            },
-            None => match hm.get("accept-encoding") {
-                None => Self::Identity,
-                Some(v) => match v.to_str() {
-                    Ok(s) => {
-                        if s.contains("zstd") {
-                            Self::Zstd
-                        } else if s.contains("gzip") {
-                            Self::Gzip
-                        } else {
-                            Self::Identity
-                        }
-                    }
-                    Err(_) => Self::Identity,
-                },
-            },
+            }
         }
+        Self::Identity
     }
 
     pub fn header_value(&self) -> header::HeaderValue {
@@ -103,5 +85,40 @@ impl Encoding {
                 "identity decoding not supported",
             )),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gzip_encode_decode() {
+        let enc = Encoding::from_header_value(Some(&Encoding::Gzip.header_value()));
+        assert_eq!(enc, Encoding::Gzip);
+
+        let data = r#"[{"id":"------","texts":[]},{"id":"Esp9G6","texts":["Stream:"]},{"id": "------","texts":[]},{"id":"ykuRdu","texts":["Internet Engineering Task Force (IETF)"]}]"#;
+
+        let encoded = enc.encode_all(data.as_bytes()).unwrap();
+        println!("{}, {}", data.len(), encoded.len());
+        assert!(encoded.len() < data.len());
+
+        let decoded = enc.decode_all(encoded.as_slice()).unwrap();
+        assert_eq!(data.as_bytes(), decoded.as_slice());
+    }
+
+    #[test]
+    fn zstd_encode_decode() {
+        let enc = Encoding::from_header_value(Some(&Encoding::Zstd.header_value()));
+        assert_eq!(enc, Encoding::Zstd);
+
+        let data = r#"[{"id":"------","texts":[]},{"id":"Esp9G6","texts":["Stream:"]},{"id": "------","texts":[]},{"id":"ykuRdu","texts":["Internet Engineering Task Force (IETF)"]}]"#;
+
+        let encoded = enc.encode_all(data.as_bytes()).unwrap();
+        println!("{}, {}", data.len(), encoded.len());
+        assert!(encoded.len() < data.len());
+
+        let decoded = enc.decode_all(encoded.as_slice()).unwrap();
+        assert_eq!(data.as_bytes(), decoded.as_slice());
     }
 }
