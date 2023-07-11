@@ -12,10 +12,15 @@ make build
 ## 复制到远程服务器
 
 ```sh
-scp target/app/jarvis-agent yiwen@74.235.107.193:/home/yiwen/jarvis/
+scp target/app/jarvis-agent yiwen@74.235.107.193:/home/yiwen/jarvis/jarvis-agent-next
 ```
 
 准备好配置文件和证书文件，执行：
 ```sh
-CONFIG_FILE_PATH=./config.toml nohup ./jarvis-agent > jarvis.out 2>&1 &
+ps -ax | grep jarvis-agent
+kill xxx
+mv jarvis-agent jarvis-agent-bk
+mv jarvis-agent-next jarvis-agent
+
+CONFIG_FILE_PATH=./config.toml nohup ./jarvis-agent > jarvis.log 2>&1 &
 ```
