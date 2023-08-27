@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM --platform=$BUILDPLATFORM amd64/rust:1.70.0-slim AS builder
+FROM --platform=$BUILDPLATFORM amd64/rust:slim-bookworm AS builder
 
 WORKDIR /src
 COPY src ./src

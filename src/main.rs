@@ -64,10 +64,10 @@ async fn main() -> anyhow::Result<()> {
 
     let client = ClientBuilder::new()
         .http2_keep_alive_interval(Some(Duration::from_secs(25)))
-        .http2_keep_alive_timeout(Duration::from_secs(5))
+        .http2_keep_alive_timeout(Duration::from_secs(15))
         .http2_keep_alive_while_idle(true)
         .connect_timeout(Duration::from_secs(5))
-        .timeout(Duration::from_secs(60))
+        .timeout(Duration::from_secs(300))
         .gzip(false) // should be false, because we use compression middleware
         .build()
         .unwrap();
